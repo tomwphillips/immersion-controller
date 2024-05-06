@@ -1,3 +1,4 @@
+from typing import Optional
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -26,7 +27,7 @@ def encode_iso8601(dt):
 class UnitRate:
     value: float
     valid_from: datetime
-    valid_to: datetime
+    valid_to: Optional[datetime]
 
 
 class Tariff:
@@ -44,7 +45,7 @@ class OctopusEnergyUnitRate(UnitRate):
         return cls(
             value=unit_rate["value_inc_vat"],
             valid_from=decode_iso8601(unit_rate["valid_from"]),
-            valid_to=decode_iso8601(unit_rate["valid_to"]),
+            valid_to=decode_iso8601(unit_rate["valid_to"]) if unit_rate.get("valid_to") else None,
         )
 
 
@@ -64,9 +65,10 @@ class OctopusEnergyTariff(Tariff):
         unit_rates = [
             OctopusEnergyUnitRate.from_api(unit_rate)
             for unit_rate in response.json()["results"]
+            if unit_rate.get("payment_method") != "NON_DIRECT_DEBIT"
         ]
 
         try:
-            return sorted(unit_rates, key=lambda unit_rate: unit_rate.valid_from)[0]
+            return unit_rates[-1]
         except IndexError as exception:
             raise TariffException(f"rate for {when} unavailable") from exception

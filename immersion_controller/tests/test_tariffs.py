@@ -36,12 +36,13 @@ class TestTariff:
             Tariff().get_rate(datetime.now(tz=timezone.utc))
 
 
-class TestOctopusEnergyTariff:
+class TestOctopusEnergyElectricityTariff:
     @responses.activate
-    def test_get_rate(self):
+    def test_get_electricity_rate(self):
         price_url = "https://host"
         when = datetime(2024, 1, 1, 12, 3, tzinfo=timezone.utc)
 
+        # electricity rates are returned reverse chronologically
         responses.get(
             price_url,
             match=[query_param_matcher({"period_from": when.isoformat()})],
@@ -71,6 +72,40 @@ class TestOctopusEnergyTariff:
         assert when < current_rate.valid_to
 
     @responses.activate
+    def test_get_gas_rate(self):
+        price_url = "https://host"
+        when = datetime(2024, 5, 5, 20, 32, tzinfo=timezone.utc)
+
+        # gas tariffs return two prices depending on payment method
+        responses.get(
+            price_url,
+            match=[query_param_matcher({"period_from": when.isoformat()})],
+            json={
+            "results": [
+                {
+                    "value_exc_vat": 5.728,
+                    "value_inc_vat": 6.0144,
+                    "valid_from": "2024-03-31T23:00:00Z",
+                    "valid_to": None,
+                    "payment_method": "DIRECT_DEBIT"
+                },
+                {
+                    "value_exc_vat": 5.902,
+                    "value_inc_vat": 6.1971,
+                    "valid_from": "2024-03-31T23:00:00Z",
+                    "valid_to": None,
+                    "payment_method": "NON_DIRECT_DEBIT"
+                },
+            ]
+        }
+        )
+        tariff = OctopusEnergyTariff(price_url)
+        current_rate = tariff.get_rate(when)
+        assert current_rate.valid_from == datetime(2024, 3, 31, 23, tzinfo=timezone.utc)
+        assert current_rate.valid_to is None
+        assert current_rate.value == 6.0144
+
+    @responses.activate
     def test_exception_raised_when_non_200_status_returned(self):
         price_url = "https://host"
         when = datetime(2024, 1, 1, 12, 3, tzinfo=timezone.utc)
@@ -98,3 +133,6 @@ class TestOctopusEnergyTariff:
         tariff = OctopusEnergyTariff(price_url)
         with pytest.raises(TariffException, match="rate for .* unavailable"):
             tariff.get_rate(when)
+
+
+# TODO: drop non-direct debit payments
