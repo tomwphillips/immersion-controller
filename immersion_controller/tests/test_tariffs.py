@@ -33,14 +33,14 @@ class TestOctopusEnergyElectricityTariff:
                     [
                         {
                             "value_inc_vat": 1.0,
-                            "valid_from":(
+                            "valid_from": (
                                 when.replace(minute=0) + (i * timedelta(minutes=30))
                             ).isoformat(),
                             "valid_to": (
                                 when.replace(minute=0)
                                 + ((i + 1) * timedelta(minutes=30))
                             ).isoformat(),
-                            "payment_method": None,  # Agile doesn't distinguish between direct debit and non-direct debit
+                            "payment_method": None,
                         }
                         for i in range(4)
                     ],
@@ -64,23 +64,23 @@ class TestOctopusEnergyElectricityTariff:
             price_url,
             match=[query_param_matcher({"period_from": when.isoformat()})],
             json={
-            "results": [
-                {
-                    "value_exc_vat": 5.728,
-                    "value_inc_vat": 6.0144,
-                    "valid_from": "2024-03-31T23:00:00Z",
-                    "valid_to": None,
-                    "payment_method": "DIRECT_DEBIT"
-                },
-                {
-                    "value_exc_vat": 5.902,
-                    "value_inc_vat": 6.1971,
-                    "valid_from": "2024-03-31T23:00:00Z",
-                    "valid_to": None,
-                    "payment_method": "NON_DIRECT_DEBIT"
-                },
-            ]
-        }
+                "results": [
+                    {
+                        "value_exc_vat": 5.728,
+                        "value_inc_vat": 6.0144,
+                        "valid_from": "2024-03-31T23:00:00Z",
+                        "valid_to": None,
+                        "payment_method": "DIRECT_DEBIT",
+                    },
+                    {
+                        "value_exc_vat": 5.902,
+                        "value_inc_vat": 6.1971,
+                        "valid_from": "2024-03-31T23:00:00Z",
+                        "valid_to": None,
+                        "payment_method": "NON_DIRECT_DEBIT",
+                    },
+                ]
+            },
         )
         tariff = OctopusEnergyTariff(price_url)
         current_rate = tariff.get_rate(when)
@@ -160,34 +160,36 @@ def test_unit_rate_api_response_deserialisation():
         "previous": None,
         "results": [
             {
-      "value_exc_vat": 5.728,
-      "value_inc_vat": 6.0144,
-      "valid_from": datetime(2024, 3, 31, 23, 0, 0, tzinfo=timezone.utc),
-      "valid_to": None,
-      "payment_method": "DIRECT_DEBIT"
-    },
-    {
-      "value_exc_vat": 5.902,
-      "value_inc_vat": 6.1971,
-      "valid_from": datetime(2024, 3, 31, 23, 0, 0, tzinfo=timezone.utc),
-      "valid_to": None,
-      "payment_method": "NON_DIRECT_DEBIT"
-    },
-    {
-      "value_exc_vat": 7.165,
-      "value_inc_vat": 7.52325,
-      "valid_from": datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-      "valid_to": datetime(2024, 3, 31, 23, 0,0, tzinfo=timezone.utc),
-      "payment_method": "NON_DIRECT_DEBIT"
-    },
-    {
-      "value_exc_vat": 6.999,
-      "value_inc_vat": 7.34895,
-      "valid_from":  datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-      "valid_to": datetime(2024, 3, 31, 23, 0,0, tzinfo=timezone.utc),
-      "payment_method": "DIRECT_DEBIT"
+                "value_exc_vat": 5.728,
+                "value_inc_vat": 6.0144,
+                "valid_from": datetime(2024, 3, 31, 23, 0, 0, tzinfo=timezone.utc),
+                "valid_to": None,
+                "payment_method": "DIRECT_DEBIT",
+            },
+            {
+                "value_exc_vat": 5.902,
+                "value_inc_vat": 6.1971,
+                "valid_from": datetime(2024, 3, 31, 23, 0, 0, tzinfo=timezone.utc),
+                "valid_to": None,
+                "payment_method": "NON_DIRECT_DEBIT",
+            },
+            {
+                "value_exc_vat": 7.165,
+                "value_inc_vat": 7.52325,
+                "valid_from": datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+                "valid_to": datetime(2024, 3, 31, 23, 0, 0, tzinfo=timezone.utc),
+                "payment_method": "NON_DIRECT_DEBIT",
+            },
+            {
+                "value_exc_vat": 6.999,
+                "value_inc_vat": 7.34895,
+                "valid_from": datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+                "valid_to": datetime(2024, 3, 31, 23, 0, 0, tzinfo=timezone.utc),
+                "payment_method": "DIRECT_DEBIT",
+            },
+        ],
     }
-        ]
-    }
-    actual_deserialized_api_response = OctopusEnergyUnitRateResponseSchema().loads(json_encoded_api_response)
+    actual_deserialized_api_response = OctopusEnergyUnitRateResponseSchema().loads(
+        json_encoded_api_response
+    )
     assert actual_deserialized_api_response == expected_deserialized_api_response

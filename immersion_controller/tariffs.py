@@ -1,8 +1,9 @@
-from typing import Optional
 from dataclasses import dataclass
 from datetime import datetime
-from marshmallow import Schema, fields,  validate
+from typing import Optional
+
 import requests
+from marshmallow import Schema, fields, validate
 
 
 @dataclass
@@ -26,7 +27,9 @@ class OctopusEnergyUnitRateSchema(Schema):
     value_exc_vat = fields.Float()
     valid_from = fields.AwareDateTime()
     valid_to = fields.AwareDateTime(allow_none=True)
-    payment_method = fields.String(validate=validate.OneOf(["DIRECT_DEBIT", "NON_DIRECT_DEBIT"]), allow_none=True)
+    payment_method = fields.String(
+        validate=validate.OneOf(["DIRECT_DEBIT", "NON_DIRECT_DEBIT"]), allow_none=True
+    )
 
 
 class OctopusEnergyUnitRateResponseSchema(Schema):
@@ -65,7 +68,7 @@ class OctopusEnergyTariff(Tariff):
 
         unit_rates = [
             OctopusEnergyUnitRate.from_api(unit_rate)
-            for unit_rate in decoded_response['results']
+            for unit_rate in decoded_response["results"]
             if unit_rate.get("payment_method") != "NON_DIRECT_DEBIT"
         ]
 
