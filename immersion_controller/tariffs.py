@@ -1,26 +1,8 @@
 from typing import Optional
 from dataclasses import dataclass
-from datetime import datetime, timezone
-
+from datetime import datetime
+from marshmallow import Schema, fields,  validate
 import requests
-
-"""
-Octopus return datetimes as ISO8601 strings in UTC.
-datetime.fromisoformat only supported these in Python 3.11.
-"""
-DATETIME_FORMAT_STRING = "%Y-%m-%dT%H:%M:%SZ"
-
-
-def decode_iso8601(encoded):
-    return datetime.strptime(encoded, DATETIME_FORMAT_STRING).replace(
-        tzinfo=timezone.utc
-    )
-
-
-def encode_iso8601(dt):
-    if dt.tzinfo != timezone.utc:
-        raise ValueError(f"timezone must be UTC, got {dt.tzinfo}")
-    return dt.strftime(DATETIME_FORMAT_STRING)
 
 
 @dataclass
@@ -39,17 +21,34 @@ class TariffException(Exception):
     pass
 
 
+class OctopusEnergyUnitRateSchema(Schema):
+    value_inc_vat = fields.Float()
+    value_exc_vat = fields.Float()
+    valid_from = fields.AwareDateTime()
+    valid_to = fields.AwareDateTime(allow_none=True)
+    payment_method = fields.String(validate=validate.OneOf(["DIRECT_DEBIT", "NON_DIRECT_DEBIT"]), allow_none=True)
+
+
+class OctopusEnergyUnitRateResponseSchema(Schema):
+    count = fields.Integer()
+    next = fields.String(allow_none=True)
+    previous = fields.String(allow_none=True)
+    results = fields.List(fields.Nested(OctopusEnergyUnitRateSchema))
+
+
 class OctopusEnergyUnitRate(UnitRate):
     @classmethod
     def from_api(cls, unit_rate):
         return cls(
             value=unit_rate["value_inc_vat"],
-            valid_from=decode_iso8601(unit_rate["valid_from"]),
-            valid_to=decode_iso8601(unit_rate["valid_to"]) if unit_rate.get("valid_to") else None,
+            valid_from=unit_rate["valid_from"],
+            valid_to=unit_rate.get("valid_to"),
         )
 
 
 class OctopusEnergyTariff(Tariff):
+    unit_rate_response_schema = OctopusEnergyUnitRateResponseSchema()
+
     def __init__(self, price_url):
         self.price_url = price_url
 
@@ -62,9 +61,11 @@ class OctopusEnergyTariff(Tariff):
         except requests.exceptions.HTTPError as exception:
             raise TariffException("status code != 200") from exception
 
+        decoded_response = self.unit_rate_response_schema.loads(response.content)
+
         unit_rates = [
             OctopusEnergyUnitRate.from_api(unit_rate)
-            for unit_rate in response.json()["results"]
+            for unit_rate in decoded_response['results']
             if unit_rate.get("payment_method") != "NON_DIRECT_DEBIT"
         ]
 

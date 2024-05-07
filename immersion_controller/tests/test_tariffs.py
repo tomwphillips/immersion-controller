@@ -6,28 +6,10 @@ from responses.matchers import query_param_matcher
 
 from immersion_controller.tariffs import (
     OctopusEnergyTariff,
+    OctopusEnergyUnitRateResponseSchema,
     Tariff,
     TariffException,
-    decode_iso8601,
-    encode_iso8601,
 )
-
-
-def test_decode_iso8601_timestamp():
-    got = decode_iso8601("2023-03-26T01:00:00Z")
-    want = datetime(2023, 3, 26, 1, 0, 0, tzinfo=timezone.utc)
-    assert got == want
-
-
-def test_encode_iso8601_timestamp():
-    got = encode_iso8601(datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc))
-    want = "2024-01-01T00:00:00Z"
-    assert got == want
-
-
-def test_encode_iso8601_timestamp_requires_utc():
-    with pytest.raises(ValueError):
-        encode_iso8601(datetime.now())
 
 
 class TestTariff:
@@ -51,13 +33,14 @@ class TestOctopusEnergyElectricityTariff:
                     [
                         {
                             "value_inc_vat": 1.0,
-                            "valid_from": encode_iso8601(
+                            "valid_from":(
                                 when.replace(minute=0) + (i * timedelta(minutes=30))
-                            ),
-                            "valid_to": encode_iso8601(
+                            ).isoformat(),
+                            "valid_to": (
                                 when.replace(minute=0)
                                 + ((i + 1) * timedelta(minutes=30))
-                            ),
+                            ).isoformat(),
+                            "payment_method": None,  # Agile doesn't distinguish between direct debit and non-direct debit
                         }
                         for i in range(4)
                     ],
@@ -135,4 +118,76 @@ class TestOctopusEnergyElectricityTariff:
             tariff.get_rate(when)
 
 
-# TODO: drop non-direct debit payments
+def test_unit_rate_api_response_deserialisation():
+    json_encoded_api_response = """{
+  "count": 4,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "value_exc_vat": 5.728,
+      "value_inc_vat": 6.0144,
+      "valid_from": "2024-03-31T23:00:00Z",
+      "valid_to": null,
+      "payment_method": "DIRECT_DEBIT"
+    },
+    {
+      "value_exc_vat": 5.902,
+      "value_inc_vat": 6.1971,
+      "valid_from": "2024-03-31T23:00:00Z",
+      "valid_to": null,
+      "payment_method": "NON_DIRECT_DEBIT"
+    },
+    {
+      "value_exc_vat": 7.165,
+      "value_inc_vat": 7.52325,
+      "valid_from": "2024-01-01T00:00:00Z",
+      "valid_to": "2024-03-31T23:00:00Z",
+      "payment_method": "NON_DIRECT_DEBIT"
+    },
+    {
+      "value_exc_vat": 6.999,
+      "value_inc_vat": 7.34895,
+      "valid_from": "2024-01-01T00:00:00Z",
+      "valid_to": "2024-03-31T23:00:00Z",
+      "payment_method": "DIRECT_DEBIT"
+    }
+  ]
+}"""
+    expected_deserialized_api_response = {
+        "count": 4,
+        "next": None,
+        "previous": None,
+        "results": [
+            {
+      "value_exc_vat": 5.728,
+      "value_inc_vat": 6.0144,
+      "valid_from": datetime(2024, 3, 31, 23, 0, 0, tzinfo=timezone.utc),
+      "valid_to": None,
+      "payment_method": "DIRECT_DEBIT"
+    },
+    {
+      "value_exc_vat": 5.902,
+      "value_inc_vat": 6.1971,
+      "valid_from": datetime(2024, 3, 31, 23, 0, 0, tzinfo=timezone.utc),
+      "valid_to": None,
+      "payment_method": "NON_DIRECT_DEBIT"
+    },
+    {
+      "value_exc_vat": 7.165,
+      "value_inc_vat": 7.52325,
+      "valid_from": datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+      "valid_to": datetime(2024, 3, 31, 23, 0,0, tzinfo=timezone.utc),
+      "payment_method": "NON_DIRECT_DEBIT"
+    },
+    {
+      "value_exc_vat": 6.999,
+      "value_inc_vat": 7.34895,
+      "valid_from":  datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+      "valid_to": datetime(2024, 3, 31, 23, 0,0, tzinfo=timezone.utc),
+      "payment_method": "DIRECT_DEBIT"
+    }
+        ]
+    }
+    actual_deserialized_api_response = OctopusEnergyUnitRateResponseSchema().loads(json_encoded_api_response)
+    assert actual_deserialized_api_response == expected_deserialized_api_response
