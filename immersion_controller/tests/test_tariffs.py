@@ -46,7 +46,7 @@ class TestOctopusEnergyElectricityTariff:
                     ],
                     key=lambda unit_rate: unit_rate["valid_from"],
                     reverse=True,
-                )  # API returns it in reverse order
+                )
             },
         )
         tariff = OctopusEnergyTariff(price_url)
