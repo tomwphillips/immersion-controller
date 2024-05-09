@@ -1,6 +1,4 @@
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Optional
 
 import requests
 from marshmallow import Schema, fields, validate
@@ -8,9 +6,9 @@ from marshmallow import Schema, fields, validate
 
 @dataclass
 class UnitRate:
-    value: float
-    valid_from: datetime
-    valid_to: Optional[datetime]
+    value: ...
+    valid_from: ...
+    valid_to: ...
 
 
 class Tariff:
