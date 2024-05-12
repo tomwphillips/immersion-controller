@@ -10,11 +10,11 @@ from immersion_controller.switches import ShellyProEM, SwitchException
 class TestShellyProEM:
     @responses.activate
     def test_on_with_timer(self):
-        ip_address = "192.168.0.2"
+        url = "http://192.168.0.2"
         on_for = datetime.timedelta(seconds=5)
 
         turn_on_response = responses.get(
-            f"http://{ip_address}/relay/0",
+            url + "/relay/0",
             match=[
                 query_param_matcher(
                     params={
@@ -30,7 +30,7 @@ class TestShellyProEM:
             },  # also timer_started_at and timer_remaining but don't need those
         )
 
-        shelly = ShellyProEM(ip_address)
+        shelly = ShellyProEM(url)
         off_at = datetime.datetime.now(tz=datetime.timezone.utc) + on_for
         shelly.turn_on(until=off_at)
 
@@ -42,10 +42,10 @@ class TestShellyProEM:
 
     @responses.activate
     def test_turn_on_raises_exception_if_not_200_response(self):
-        ip_address = "192.168.0.2"
-        responses.get(f"http://{ip_address}/relay/0", status=400)
+        url = "http://192.168.0.2"
+        responses.get(url + "/relay/0", status=400)
         with pytest.raises(SwitchException):
-            ShellyProEM(ip_address).turn_on(
+            ShellyProEM(url).turn_on(
                 until=datetime.datetime.now(tz=datetime.timezone.utc)
                 + datetime.timedelta(seconds=1)
             )

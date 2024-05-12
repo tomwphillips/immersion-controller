@@ -19,15 +19,15 @@ class SwitchException(Exception):
 
 
 class ShellyProEM(Switch):
-    def __init__(self, ip_address):
-        self.ip_address = ip_address
+    def __init__(self, url):
+        self.url = url
 
     def turn_on(self, until=None):
         if until is None:
             raise NotImplementedError()
         on_for = until - datetime.datetime.now(tz=datetime.timezone.utc)
         response = requests.get(
-            f"http://{self.ip_address}/relay/0",
+            f"{self.url}/relay/0",
             params={"turn": "on", "timer": round(on_for.total_seconds())},
         )
 
