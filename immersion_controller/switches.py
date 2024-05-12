@@ -25,7 +25,7 @@ class ShellyProEM(Switch):
     def turn_on(self, until=None):
         if until is None:
             raise NotImplementedError()
-        on_for = until - datetime.datetime.now()
+        on_for = until - datetime.datetime.now(tz=datetime.timezone.utc)
         response = requests.get(
             f"http://{self.ip_address}/relay/0",
             params={"turn": "on", "timer": round(on_for.total_seconds())},

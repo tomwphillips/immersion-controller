@@ -31,7 +31,7 @@ class TestShellyProEM:
         )
 
         shelly = ShellyProEM(ip_address)
-        off_at = datetime.datetime.now() + on_for
+        off_at = datetime.datetime.now(tz=datetime.timezone.utc) + on_for
         shelly.turn_on(until=off_at)
 
         assert turn_on_response.call_count == 1
@@ -46,5 +46,6 @@ class TestShellyProEM:
         responses.get(f"http://{ip_address}/relay/0", status=400)
         with pytest.raises(SwitchException):
             ShellyProEM(ip_address).turn_on(
-                until=datetime.datetime.now() + datetime.timedelta(seconds=1)
+                until=datetime.datetime.now(tz=datetime.timezone.utc)
+                + datetime.timedelta(seconds=1)
             )
