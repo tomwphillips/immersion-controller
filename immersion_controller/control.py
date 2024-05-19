@@ -17,9 +17,11 @@ def sleep_until(dt):
 
 
 class Controller:
-    def __init__(self, electricity_tariff, gas_tariff, switch, sleep_until=sleep_until):
-        self.electricity_tariff = electricity_tariff
-        self.gas_tariff = gas_tariff
+    def __init__(
+        self, electricity_agreement, gas_agreement, switch, sleep_until=sleep_until
+    ):
+        self.electricity_agreement = electricity_agreement
+        self.gas_agreement = gas_agreement
         self.switch = switch
         self.sleep_until = sleep_until
 
@@ -35,8 +37,9 @@ class Controller:
 
         for _ in loop(periods):
             now = datetime.now(tz=timezone.utc)
-            electricity_rate = self.electricity_tariff.get_rate(now)
-            gas_rate = self.gas_tariff.get_rate(now)
+            electricity_rate = self.electricity_agreement.get_rate(now)
+            gas_rate = self.gas_agreement.get_rate(now)
+
             turn_on = electricity_rate.value <= gas_rate.value
 
             logger.info(

@@ -5,8 +5,8 @@ from unittest.mock import Mock, call
 import pytest
 
 from immersion_controller.control import Controller, sleep_until
+from immersion_controller.octopus.account import Agreement, AgreementException, UnitRate
 from immersion_controller.switches import Switch, SwitchException
-from immersion_controller.tariffs import Tariff, TariffException, UnitRate
 
 
 def test_controller_for_specified_loops():
@@ -15,7 +15,7 @@ def test_controller_for_specified_loops():
         valid_from=datetime(2024, 1, 1, tzinfo=timezone.utc),
         valid_to=datetime(2034, 1, 1, tzinfo=timezone.utc),
     )
-    gas_tariff = Mock(spec_set=Tariff, **{"get_rate.return_value": gas_rate})
+    gas_agreement = Mock(spec_set=Agreement, **{"get_rate.return_value": gas_rate})
 
     less_than_gas = gas_rate.value - 1
     more_than_gas = gas_rate.value + 1
@@ -41,14 +41,14 @@ def test_controller_for_specified_loops():
             valid_to=datetime(2024, 4, 1, 2, 0, 0, tzinfo=timezone.utc),
         ),
     ]
-    electricity_tariff = Mock(
-        spec_set=Tariff, **{"get_rate.side_effect": electricity_rates}
+    electricity_agreement = Mock(
+        spec_set=Agreement, **{"get_rate.side_effect": electricity_rates}
     )
 
     switch = Mock(spec_set=Switch)
     sleep_until = Mock()
 
-    controller = Controller(electricity_tariff, gas_tariff, switch, sleep_until)
+    controller = Controller(electricity_agreement, gas_agreement, switch, sleep_until)
     controller.run(len(electricity_rates))
 
     switch.turn_on.assert_has_calls(
@@ -62,13 +62,13 @@ def test_controller_for_specified_loops():
     )
 
 
-def test_controller_shutdown_on_electricity_tariff_exception():
+def test_controller_shutdown_on_electricity_agreement_exception():
     gas_rate = UnitRate(
         value=1,
         valid_from=datetime(2024, 1, 1, tzinfo=timezone.utc),
         valid_to=datetime(2034, 1, 1, tzinfo=timezone.utc),
     )
-    gas_tariff = Mock(spec_set=Tariff, **{"get_rate.return_value": gas_rate})
+    gas_agreement = Mock(spec_set=Agreement, **{"get_rate.return_value": gas_rate})
 
     less_than_gas = gas_rate.value - 1
     more_than_gas = gas_rate.value + 1
@@ -83,17 +83,17 @@ def test_controller_shutdown_on_electricity_tariff_exception():
             valid_from=datetime(2024, 4, 1, 0, 30, 0, tzinfo=timezone.utc),
             valid_to=datetime(2024, 4, 1, 1, 0, 0, tzinfo=timezone.utc),
         ),
-        TariffException,
+        AgreementException,
     ]
-    electricity_tariff = Mock(
-        spec_set=Tariff, **{"get_rate.side_effect": electricity_rates}
+    electricity_agreement = Mock(
+        spec_set=Agreement, **{"get_rate.side_effect": electricity_rates}
     )
 
     switch = Mock(spec_set=Switch)
     sleep_until = Mock()
 
-    controller = Controller(electricity_tariff, gas_tariff, switch, sleep_until)
-    with pytest.raises(TariffException):
+    controller = Controller(electricity_agreement, gas_agreement, switch, sleep_until)
+    with pytest.raises(AgreementException):
         controller.run()  # run forever, but shuts down on exception
 
     switch.turn_on.assert_has_calls(
@@ -106,14 +106,14 @@ def test_controller_shutdown_on_electricity_tariff_exception():
     )
 
 
-def test_controller_shutdown_on_gas_tariff_exception():
+def test_controller_shutdown_on_gas_agreement_exception():
     gas_rate = UnitRate(
         value=1,
         valid_from=datetime(2024, 1, 1, tzinfo=timezone.utc),
         valid_to=datetime(2034, 1, 1, tzinfo=timezone.utc),
     )
-    gas_tariff = Mock(
-        spec_set=Tariff, **{"get_rate.side_effect": [gas_rate, TariffException]}
+    gas_agreement = Mock(
+        spec_set=Agreement, **{"get_rate.side_effect": [gas_rate, AgreementException]}
     )
 
     less_than_gas = gas_rate.value - 1
@@ -130,15 +130,15 @@ def test_controller_shutdown_on_gas_tariff_exception():
             valid_to=datetime(2024, 4, 1, 1, 0, 0, tzinfo=timezone.utc),
         ),
     ]
-    electricity_tariff = Mock(
-        spec_set=Tariff, **{"get_rate.side_effect": electricity_rates}
+    electricity_agreement = Mock(
+        spec_set=Agreement, **{"get_rate.side_effect": electricity_rates}
     )
 
     switch = Mock(spec_set=Switch)
     sleep_until = Mock()
 
-    controller = Controller(electricity_tariff, gas_tariff, switch, sleep_until)
-    with pytest.raises(TariffException):
+    controller = Controller(electricity_agreement, gas_agreement, switch, sleep_until)
+    with pytest.raises(AgreementException):
         controller.run()  # run forever, but shuts down on exception
 
     switch.turn_on.assert_not_called()
@@ -151,7 +151,7 @@ def test_controller_shutdown_on_switch_exception():
         valid_from=datetime(2024, 1, 1, tzinfo=timezone.utc),
         valid_to=datetime(2034, 1, 1, tzinfo=timezone.utc),
     )
-    gas_tariff = Mock(spec_set=Tariff, **{"get_rate.return_value": gas_rate})
+    gas_agreement = Mock(spec_set=Agreement, **{"get_rate.return_value": gas_rate})
 
     less_than_gas = gas_rate.value - 1
     electricity_rate = UnitRate(
@@ -159,19 +159,19 @@ def test_controller_shutdown_on_switch_exception():
         valid_from=datetime(2024, 4, 1, 0, 30, 0, tzinfo=timezone.utc),
         valid_to=datetime(2024, 4, 1, 1, 0, 0, tzinfo=timezone.utc),
     )
-    electricity_tariff = Mock(
-        spec_set=Tariff, **{"get_rate.return_value": electricity_rate}
+    electricity_agreement = Mock(
+        spec_set=Agreement, **{"get_rate.return_value": electricity_rate}
     )
 
     switch = Mock(spec_set=Switch, **{"turn_on.side_effect": SwitchException})
     sleep_until = Mock()
 
-    controller = Controller(electricity_tariff, gas_tariff, switch, sleep_until)
+    controller = Controller(electricity_agreement, gas_agreement, switch, sleep_until)
     with pytest.raises(SwitchException):
         controller.run()
 
-    gas_tariff.get_rate.assert_called_once()
-    electricity_tariff.get_rate.assert_called_once()
+    gas_agreement.get_rate.assert_called_once()
+    electricity_agreement.get_rate.assert_called_once()
     switch.turn_on.assert_called_once_with(electricity_rate.valid_to)
     sleep_until.assert_not_called()
 

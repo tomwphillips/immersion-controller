@@ -1,9 +1,10 @@
-import argparse
 import logging.config
 
+import click
+
 from immersion_controller.control import Controller
+from immersion_controller.octopus.account import Agreement
 from immersion_controller.switches import ShellyProEM
-from immersion_controller.tariffs import OctopusEnergyTariff
 
 logging.config.dictConfig(
     {
@@ -25,19 +26,30 @@ logging.config.dictConfig(
     }
 )
 
-
-def parse_args(args=None):
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-elec", "--octopus-electricity-tariff-url", required=True)
-    parser.add_argument("-gas", "--octopus-gas-tariff-url", required=True)
-    parser.add_argument("-shelly", "--shelly-url", required=True)
-    return parser.parse_args(args)
+logger = logging.getLogger(__name__)
 
 
-def main(args=None):
-    args = parse_args(args)
-    electricity_tariff = OctopusEnergyTariff(args.octopus_electricity_tariff_url)
-    gas_tariff = OctopusEnergyTariff(args.octopus_gas_tariff_url)
-    shelly_switch = ShellyProEM(args.shelly_url)
-    controller = Controller(electricity_tariff, gas_tariff, shelly_switch)
+@click.command()
+@click.option(
+    "--api-key", required=True, help="Octopus Energy API key", envvar="IC_API_KEY"
+)
+@click.option(
+    "--account-number",
+    required=True,
+    help="Octopus Energy account number",
+    envvar="IC_ACCOUNT_NUMBER",
+)
+@click.option(
+    "--shelly-url",
+    required=True,
+    help="URL of your Shelly device",
+    envvar="IC_SHELLY_URL",
+)
+def main(api_key, account_number, shelly_url):
+    electricity_agreement = Agreement.get_electricity_agreement(api_key, account_number)
+    logger.info(electricity_agreement)
+    gas_agreement = Agreement.get_gas_agreement(api_key, account_number)
+    logger.info(gas_agreement)
+    shelly_switch = ShellyProEM(shelly_url)
+    controller = Controller(electricity_agreement, gas_agreement, shelly_switch)
     controller.run()
