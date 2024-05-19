@@ -1,5 +1,4 @@
 import dataclasses
-from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import requests
@@ -61,7 +60,7 @@ class Agreement:
         decoded_response = unit_rate_response_schema.loads(response.content)
 
         unit_rates = [
-            OctopusEnergyUnitRate.from_api(unit_rate)
+            UnitRate.from_api(unit_rate)
             for unit_rate in decoded_response["results"]
             if unit_rate.get("payment_method") != "NON_DIRECT_DEBIT"
         ]
@@ -98,14 +97,12 @@ class Agreement:
         )
 
 
-@dataclass
+@dataclasses.dataclass
 class UnitRate:
     value: ...
     valid_from: ...
     valid_to: ...
 
-
-class OctopusEnergyUnitRate(UnitRate):
     @classmethod
     def from_api(cls, unit_rate):
         return cls(
